@@ -1,6 +1,6 @@
 import "server-only";
 import postgres from "postgres";
-import { uuidPattern } from "./studio-validation";
+import { uuidPattern } from "./identifiers";
 
 export const studioCookie = "coptle_studio_access";
 export const studioConfigured = () => Boolean(process.env.COPTLE_STUDIO_DATABASE_URL && process.env.COPTLE_SUPABASE_URL && process.env.COPTLE_SUPABASE_PUBLISHABLE_KEY);

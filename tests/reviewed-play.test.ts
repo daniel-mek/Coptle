@@ -6,13 +6,14 @@ const db = new PGlite();
 const contents = (name: string) => readFileSync(new URL(name, import.meta.url), "utf8");
 const today = "(now() at time zone 'America/New_York')::date";
 
-beforeAll(async () => {
+async function migrate(db: PGlite) {
   await db.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key);");
-  for (const migration of ["content_foundation", "editorial_workflow", "studio", "reviewed_play", "launch_inventory"].entries()) {
+  for (const migration of ["content_foundation", "editorial_workflow", "studio", "reviewed_play", "launch_inventory", "bulk_drafts", "content_reports"].entries()) {
     const [index, name] = migration;
     await db.exec(contents(`../supabase/migrations/20261119000${index + 1}_${name}.sql`));
   }
-}, 30_000);
+}
+beforeAll(() => migrate(db), 30_000);
 afterAll(async () => { await db.close(); });
 
 test("reviewed inventory gates play, limits archive dates, and keeps current answers out of practice", async () => {
@@ -50,3 +51,39 @@ test("reviewed inventory gates play, limits archive dates, and keeps current ans
     });
   } finally { await db.exec("reset session authorization"); }
 });
+
+test("reviewed content reports verify ownership, retain the exact version, and are private", async () => {
+  const db = new PGlite();
+  try {
+    await migrate(db);
+    await db.exec(contents("./sql/reviewed-play-fixture.sql"));
+    await db.exec("create role launch_staff login in role coptle_studio; insert into coptle.studio_permissions values ('00000000-0000-0000-0000-000000000001', 'publish');");
+    const owner = "a".repeat(64);
+    const stranger = "b".repeat(64);
+    const board = "00000000-0000-0000-0000-000000000009";
+    await db.query("insert into coptle.play_guests(token_hash, expires_at) values ($1, now() + interval '1 day'), ($2, now() + interval '1 day')", [owner, stranger]);
+    await db.query(`insert into coptle.play_sessions(token_hash, game, difficulty, mode, slot, version_id, board)
+      select $1, game, difficulty, 'daily', puzzle_date::text, version_id, jsonb_build_object('id', $2::text)
+      from coptle.daily_puzzles where puzzle_date = ${today}`, [owner, board]);
+    await db.exec("create role report_player in role coptle_play; set role report_player");
+    try {
+      await expect(db.query("select * from coptle.content_reports")).rejects.toMatchObject({ code: "42501" });
+      const report = (hash: string) => db.query("select coptle.play_report($1, $2, 'answer', 'Synthetic report') as result", [hash, board]);
+      expect((await report(stranger)).rows).toEqual([{ result: "unavailable" }]);
+      expect((await report(owner)).rows).toEqual([{ result: "saved" }]);
+      expect((await report(owner)).rows).toEqual([{ result: "duplicate" }]);
+    } finally { await db.exec("reset role"); }
+    await db.exec("set session authorization launch_staff");
+    try {
+      await expect(db.query("select * from coptle.studio_reports()")).rejects.toMatchObject({ code: "42501" });
+      await db.transaction(async (tx) => {
+        await tx.query("select set_config('coptle.studio_subject', '00000000-0000-0000-0000-000000000001', true)");
+        const report = (await tx.query<{ id: string }>("select id from coptle.studio_reports()")).rows[0];
+        await tx.query("select coptle.studio_moderate_report($1, 'open', 'resolved', 'Synthetic resolution')", [report.id]);
+        expect((await tx.query("select status, history from coptle.studio_reports()")).rows).toMatchObject([
+          { status: "resolved", history: [{ status: "resolved", note: "Synthetic resolution", moderator_id: "00000000-0000-0000-0000-000000000001" }] },
+        ]);
+      });
+    } finally { await db.exec("reset session authorization"); }
+  } finally { await db.close(); }
+}, 30_000);

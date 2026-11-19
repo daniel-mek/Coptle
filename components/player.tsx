@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ReportPuzzle } from "./report-puzzle";
+import { dailyResultKey } from "../lib/daily-stats";
 import { boardRevision, games, type Board, type Difficulty, type Game, type Mode, type PlayMutation } from "../lib/catalog";
 
 type Action = { action: "load" } | {
@@ -57,12 +59,12 @@ export function Player({ game, level, mode, date, demo }: { game: Game; level: D
   useEffect(() => {
     if (mode !== "daily" || !board || board.outcome === "playing") return;
     try {
-      localStorage.setItem(`coptle:result:${game}:${level}:${board.date}`, board.outcome);
+      localStorage.setItem(dailyResultKey(!demo, game, level, board.date), board.outcome);
       window.dispatchEvent(new Event("coptle-results"));
     } catch {
       // The current puzzle remains usable if browser storage is blocked.
     }
-  }, [board, game, level, mode]);
+  }, [board, demo, game, level, mode]);
 
   async function mutate(action: PlayMutation, guess?: string) {
     if (!board || requestInFlight.current) return;
@@ -173,6 +175,7 @@ export function Player({ game, level, mode, date, demo }: { game: Game; level: D
       <button className="button" onClick={() => void share(board)}>Copy result</button>
       {mode === "practice" && <button className="button secondary" disabled={busy} onClick={() => void mutate("restart")}>Play again</button>}
     </section>}
+    {!demo && <ReportPuzzle key={board.id} boardId={board.id} />}
     <p role="status">{message}</p>
   </>;
 }

@@ -20,3 +20,11 @@ export function summarizeDaily(records: DailyRecord[], today: string) {
     current, best,
   };
 }
+
+export function dailyResultNamespace(reviewed: boolean) {
+  return reviewed ? "coptle-reviewed" : "coptle";
+}
+
+export function dailyResultKey(reviewed: boolean, game: string, level: string, date: string) {
+  return `${dailyResultNamespace(reviewed)}:result:${game}:${level}:${date}`;
+}

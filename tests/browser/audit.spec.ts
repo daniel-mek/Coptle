@@ -44,6 +44,7 @@ test("rejects cross-origin, oversized and stale writes while keeping valid attem
   expect(board.answer).toBeUndefined();
 
   const submission = { ...puzzle, action: "guess", id: board.id, revision: 0, guess: "train", mutation: crypto.randomUUID() };
+  expect((await play({ ...submission, mutation: "-".repeat(36) })).status()).toBe(400);
   const first = await play(submission);
   expect(first.status()).toBe(200);
   expect((await first.json()).guesses).toHaveLength(1);

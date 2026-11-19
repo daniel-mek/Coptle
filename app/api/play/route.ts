@@ -6,63 +6,27 @@ import { allowMutation, fetchSession, guestLifetime, newSession } from "../../..
 import { withFixtureGuest } from "../../../lib/fixture-store";
 import { applyPuzzleMove, InvalidGuess } from "../../../lib/puzzles";
 
-import { playReviewed } from "../../../lib/reviewed-play";
-const headers = { "Cache-Control": "private, no-store" };
-const maxBody = 2048;
-
-function error(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status, headers });
-}
-
-async function readBody(request: NextRequest) {
-  const reader = request.body?.getReader();
-  if (!reader) return error("A request body is required.", 400);
-  const decoder = new TextDecoder();
-  let length = 0;
-  let raw = "";
-  try {
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      length += value.byteLength;
-      if (length > maxBody) {
-        await reader.cancel().catch(() => {});
-        return error("Request is too large.", 413);
-      }
-      raw += decoder.decode(value, { stream: true });
-    }
-    const value: unknown = JSON.parse(raw + decoder.decode());
-    if (!value || typeof value !== "object" || Array.isArray(value)) return error("Invalid play request.", 400);
-    return value as Record<string, unknown>;
-  } catch {
-    return error("Invalid JSON.", 400);
-  }
-}
+import { playReviewed, reviewedGuestCookie } from "../../../lib/reviewed-play";
+import { playerError as error, playerProtocol, privateHeaders as headers, readPlayerJson, validatePlayerRequest } from "../../../lib/player-request";
+import { uuidPattern } from "../../../lib/identifiers";
 
 export async function POST(request: NextRequest) {
   const reviewed = reviewedPlayEnabled();
-  const cookieName = reviewed ? "coptle_reviewed_guest" : "coptle_fixture_guest";
+  const cookieName = reviewed ? reviewedGuestCookie : "coptle_fixture_guest";
   if (!reviewed && !fixturesEnabled()) return error("Puzzles are awaiting review.", 404);
-  const origin = request.headers.get("origin");
-  const protocol = process.env.VERCEL === "1" ? "https:" : request.nextUrl.protocol;
-  const host = request.headers.get("host");
-  const expectedOrigin = host ? `${protocol}//${host}` : request.nextUrl.origin;
-  if (request.headers.get("sec-fetch-site") === "cross-site" || (origin && origin !== expectedOrigin)) {
-    return error("Cross-origin play requests are unavailable.", 403);
-  }
-  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
-    return error("Send a JSON request.", 415);
-  }
-  const body = await readBody(request);
+  const invalidRequest = validatePlayerRequest(request);
+  if (invalidRequest) return invalidRequest;
+  const protocol = playerProtocol(request);
+  const body = await readPlayerJson(request);
   if (body instanceof Response) return body;
   const { game, level, mode, action, id, guess, revision, mutation, date } = body;
   if (typeof game !== "string" || !isGame(game) || typeof level !== "string" || !isDifficulty(level)
     || (mode !== "daily" && mode !== "practice" && mode !== "archive") || (action !== "load" && action !== "guess" && action !== "restart" && action !== "hint" && action !== "forfeit")) {
     return error("Invalid play request.", 400);
   }
-  if (action !== "load" && (typeof id !== "string" || id.length !== 36 || typeof revision !== "number"
+  if (action !== "load" && (typeof id !== "string" || !uuidPattern.test(id) || typeof revision !== "number"
     || !Number.isInteger(revision) || revision < 0 || revision > 8
-    || typeof mutation !== "string" || !/^[a-f\d-]{36}$/.test(mutation))) {
+    || typeof mutation !== "string" || !uuidPattern.test(mutation))) {
     return error("Invalid session revision.", 400);
   }
   if (action === "guess" && (typeof guess !== "string" || !guess.trim() || guess.length > 120)) {

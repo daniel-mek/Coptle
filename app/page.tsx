@@ -46,7 +46,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
         {tiles.map(({ id, name, Icon, playable }) => {
           const available = demo || ready.some((game) => game === id);
           const status = playable ? available ? mode === "daily"
-            ? <DailyStatus game={id} level={level} date={today} /> : "Practice puzzle" : "Awaiting review" : "Coming later";
+            ? <DailyStatus game={id} level={level} date={today} reviewed={!demo} /> : "Practice puzzle" : "Awaiting review" : "Coming later";
           const content = <><Icon aria-hidden="true" /><div><h3>{name}</h3><p>{status}</p></div></>;
           return playable && available
             ? <Link className={`card ${id}`} href={`/play/${id}?mode=${mode}&level=${level}`} aria-label={`Play ${name}`} key={id}>{content}</Link>

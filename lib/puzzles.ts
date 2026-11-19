@@ -52,7 +52,7 @@ export function scoreFixtureGuess({ puzzle, saintDirectory, aliases }: FixtureSn
     }
     guess = { input, marks: scoreWord(puzzle.answer, input) };
   } else if (puzzle.game === "saintle") {
-    const saint = saintDirectory?.find((entry) => [normalize(entry.answer), ...entry.aliases].includes(input));
+    const saint = saintDirectory?.find((entry) => [normalize(entry.answer), ...entry.aliases.map(normalize)].includes(input));
     if (!saint) throw new InvalidGuess("Choose a saint from the list.");
     correct = normalize(saint.answer) === normalize(puzzle.answer);
     guess = {

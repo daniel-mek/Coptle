@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Difficulty } from "../lib/catalog";
+import { dailyResultKey } from "../lib/daily-stats";
 
 export function DailyCountdown({ reset, initialMinutes, refreshHref }: { reset: number; initialMinutes: number; refreshHref: string }) {
   const [minutes, setMinutes] = useState(initialMinutes);
@@ -24,9 +25,9 @@ function subscribe(callback: () => void) {
   };
 }
 
-export function DailyStatus({ game, level, date }: { game: string; level: Difficulty; date: string }) {
+export function DailyStatus({ game, level, date, reviewed }: { game: string; level: Difficulty; date: string; reviewed: boolean }) {
   const result = useSyncExternalStore(subscribe, () => {
-    try { return localStorage.getItem(`coptle:result:${game}:${level}:${date}`); }
+    try { return localStorage.getItem(dailyResultKey(reviewed, game, level, date)); }
     catch { return null; }
   }, () => null);
   return <span>{result === "won" ? "Solved" : result === "lost" ? "Completed" : "Daily puzzle"}</span>;

@@ -1,3 +1,4 @@
+import { ContentReports, type ContentReport } from "./reports";
 import { BulkImport } from "./bulk-import";
 import { LaunchInventory, type InventoryRow } from "./launch-inventory";
 import type { Metadata } from "next";
@@ -22,6 +23,7 @@ const notices: Record<string, string> = {
   signin: "Sign-in failed or expired. Use an authorized staff account.",
   invalid: "Check the required fields, review confirmation, and field lengths.",
   forbidden: "Your staff account lacks permission for this action.",
+  "report-changed": "This report has already changed. Check its current status and try again.",
   duplicate: "That review, approval, or schedule slot already exists.",
   blocked: "The version or schedule does not meet the publishing requirements.",
   unavailable: "Content Studio is temporarily unavailable.",
@@ -114,6 +116,7 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
   let available = configured;
   let permissions: string[] = [];
   let versions: Version[] = [];
+  let reports: ContentReport[] = [];
   let inventory: InventoryRow[] = [];
   let signedIn = false;
   if (available) {
@@ -121,10 +124,11 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
       const subject = await studioSubject((await cookies()).get(studioCookie)?.value);
       signedIn = Boolean(subject);
       if (subject) {
-        ({ permissions, versions, inventory } = await withStudio(subject, async (sql) => {
+        ({ permissions, versions, inventory, reports } = await withStudio(subject, async (sql) => {
           const [record] = await sql<{ permissions: string[] }[]>`select coptle.editorial_capabilities() as permissions`;
           return {
             permissions: record.permissions,
+            reports: record.permissions.includes("publish") ? await sql<ContentReport[]>`select * from coptle.studio_reports()` : [],
             inventory: record.permissions.length ? await sql<InventoryRow[]>`
               select i.game, i.difficulty, i.daily_ready, i.practice_ready, i.gaps,
                 i.window_start::text as window_start, i.window_end::text as window_end
@@ -158,6 +162,7 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
       <form action={signOut}><button className="button">Sign out</button></form>
       {permissions.includes("draft") && <details className="studio-card"><summary>New puzzle</summary><Draft /></details>}
       {permissions.includes("draft") && <BulkImport />}
+      {permissions.includes("publish") && <ContentReports reports={reports} />}
       <LaunchInventory rows={inventory} />
       <h2>Puzzle versions</h2>
       {versions.length ? versions.map((version) => <VersionCard key={version.version_id} version={version} permissions={permissions} />)

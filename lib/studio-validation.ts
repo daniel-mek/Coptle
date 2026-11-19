@@ -1,7 +1,7 @@
 import { normalize } from "./scoring";
 import { isDifficulty, isGame } from "./catalog";
 
-export const uuidPattern = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+import { uuidPattern } from "./identifiers";
 export const reviewStages = ["source", "theology", "gameplay"] as const;
 
 export class StudioInputError extends Error {}
@@ -60,6 +60,11 @@ export function parseStudioAction(form: FormData) {
   }
   const version = field(form, "version", 36);
   if (!uuidPattern.test(version)) throw new StudioInputError("Select a valid puzzle version.");
+  if (action === "moderate-report") {
+    const expected = field(form, "expected", 10);
+    if (expected !== "open" && expected !== "resolved") throw new StudioInputError("Select a valid report status.");
+    return { action, version, expected, status: expected === "open" ? "resolved" : "open", note: field(form, "note", 1000) } as const;
+  }
   if (action === "review") {
     const stage = reviewStages.find((item) => item === form.get("stage"));
     const verdict = form.get("verdict");

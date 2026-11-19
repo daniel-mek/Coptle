@@ -123,3 +123,5 @@ a.card:hover { outline: 2px solid var(--green); outline-offset: -2px; }
 .studio-inventory .studio-card { margin-block: .4rem; }
 .studio-difficulty { text-transform: capitalize; }
 .studio-import-template { max-width: 100%; overflow: auto; background: var(--panel); padding: .75rem; }
+
+.report-details { white-space: pre-wrap; overflow-wrap: anywhere; }

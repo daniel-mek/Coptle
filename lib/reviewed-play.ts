@@ -1,4 +1,5 @@
 import "server-only";
+import { uuidPattern } from "./identifiers";
 import { createHash } from "node:crypto";
 import postgres from "postgres";
 import { boardRevision, type Board, type Difficulty, type Game, type Mode, type PlayMutation } from "./catalog";
@@ -74,7 +75,6 @@ type Request = {
 type Reply = { board: Board; token?: string } | { error: string; status: number };
 const unavailable = { error: "That reviewed puzzle is unavailable.", status: 404 };
 const stale = { error: "Progress changed. Reload to continue.", status: 409 };
-const uuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function playReviewed(input: Request): Promise<Reply> {
@@ -82,7 +82,7 @@ export async function playReviewed(input: Request): Promise<Reply> {
   return connection().begin(async (sql) => {
     await sql`select set_config('statement_timeout', '5000', true)`;
     const slot = mode === "practice" ? "practice" : date;
-    let key = input.cookie && uuid.test(input.cookie) ? hash(input.cookie) : null;
+    let key = input.cookie && uuidPattern.test(input.cookie) ? hash(input.cookie) : null;
     const [guest] = key ? await sql`select * from coptle.play_guests
       where token_hash = ${key} and expires_at > now() for update` : [];
     if (!guest && action !== "load") return stale;
@@ -136,5 +136,19 @@ export async function playReviewed(input: Request): Promise<Reply> {
       on conflict (token_hash, game, difficulty, mode, slot) do update set
         version_id = excluded.version_id, board = excluded.board, last_mutation = excluded.last_mutation`;
     return { board, token };
+  });
+}
+
+
+export const reviewedGuestCookie = "coptle_reviewed_guest";
+
+export async function submitReviewedReport(cookie: string | undefined, boardId: string, category: string, details: string) {
+  if (!cookie || !uuidPattern.test(cookie)) return "unavailable";
+  return connection().begin(async (sql) => {
+    await sql`select set_config('statement_timeout', '5000', true)`;
+    const [row] = await sql<{ result: string }[]>`
+      select coptle.play_report(${hash(cookie)}, ${boardId}::uuid, ${category}, ${details}) as result
+    `;
+    return row.result;
   });
 }

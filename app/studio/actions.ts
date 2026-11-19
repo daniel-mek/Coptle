@@ -73,6 +73,9 @@ export async function submitStudio(form: FormData) {
           case "schedule":
             await sql`select coptle.editorial_schedule(${input.version}::uuid, ${input.date}::date)`;
             break;
+          case "moderate-report":
+            await sql`select coptle.studio_moderate_report(${input.version}::uuid, ${input.expected}, ${input.status}, ${input.note})`;
+            break;
           case "withdraw":
             await sql`select coptle.editorial_withdraw(${input.version}::uuid, ${input.note})`;
         }
@@ -81,7 +84,7 @@ export async function submitStudio(form: FormData) {
   } catch (cause) {
     const code = cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
     status = cause instanceof StudioInputError ? "invalid" : code === "42501" ? "forbidden"
-      : code === "23505" ? "duplicate" : code === "23503" || code === "23514" ? "blocked" : "unavailable";
+      : code === "40001" ? "report-changed" : code === "23505" ? "duplicate" : code === "23503" || code === "23514" ? "blocked" : "unavailable";
   }
   finish(status);
 }
