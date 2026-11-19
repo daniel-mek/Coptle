@@ -9,7 +9,7 @@ const permissions = ["draft", "source", "theology", "gameplay", "publish"];
 beforeAll(async () => {
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
     create schema auth; create table auth.users(id uuid primary key);`);
-  for (const name of ["202611190001_content_foundation", "202611190002_editorial_workflow"]) {
+  for (const name of ["202611190001_content_foundation", "202611190002_editorial_workflow", "202611190003_studio"]) {
     await db.exec(readFileSync(new URL(`../supabase/migrations/${name}.sql`, import.meta.url), "utf8"));
   }
   for (const [index, login] of staff.entries()) {
@@ -18,11 +18,12 @@ beforeAll(async () => {
     await db.query("insert into auth.users values ($1)", [person]);
     await db.query("insert into coptle.editorial_permissions values ($1, $2, $3)", [login, person, permissions[index]]);
   }
-  await db.exec("create role unassigned login in role coptle_editorial");
+  await db.exec("create role unassigned login in role coptle_editorial; create role studio_server login in role coptle_studio");
+  await db.exec("insert into coptle.studio_permissions values ('00000000-0000-0000-0000-000000000003', 'theology')");
 }, 30_000);
 afterAll(async () => { await db.close(); });
 
-async function as<T>(login: (typeof staff)[number] | "unassigned", work: () => Promise<T>) {
+async function as<T>(login: (typeof staff)[number] | "unassigned" | "studio_server", work: () => Promise<T>) {
   await db.exec(`set session authorization ${login}`);
   try { return await work(); }
   finally { await db.exec("reset session authorization"); }
@@ -55,4 +56,20 @@ test("staff capabilities preserve human attribution and protect the full publica
   await as("publisher", () => db.query("select coptle.editorial_withdraw($1, 'Test withdrawal')", [id]));
   const withdrawn = await as("publisher", () => db.query("select version_id, withdrawn from coptle.editorial_versions()"));
   expect(withdrawn.rows).toEqual([{ version_id: id, withdrawn: true }]);
+});
+
+test("Studio identity is transaction-scoped and unavailable to ordinary SQL staff", async () => {
+  const subject = "00000000-0000-0000-0000-000000000003";
+  const attempt = (login: "studio_server" | "unassigned") => as(login, async () => {
+    const capability = await db.transaction(async (tx) => {
+      await tx.query("select set_config('coptle.studio_subject', $1, true)", [subject]);
+      const result = await tx.query<{ capabilities: string[] }>("select coptle.editorial_capabilities() as capabilities");
+      return result.rows[0].capabilities;
+    });
+    expect((await db.query("select coptle.editorial_capabilities() as capabilities")).rows)
+      .toEqual([{ capabilities: [] }]);
+    return capability;
+  });
+  await expect(attempt("studio_server")).resolves.toEqual(["theology"]);
+  await expect(attempt("unassigned")).rejects.toMatchObject({ code: "42501" });
 });

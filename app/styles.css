@@ -101,3 +101,15 @@ a.card:hover { outline: 2px solid var(--green); outline-offset: -2px; }
 .archive-list { list-style: none; padding: 0; }
 .archive-list li { border-bottom: 1px solid var(--line); padding: .8rem 0; }
 .archive-list nav { display: flex; flex-wrap: wrap; gap: .45rem 1.15rem; }
+
+.studio { max-width: 52rem; overflow-wrap: anywhere; }
+.studio h2 { margin: 1.5rem 0 .75rem; }
+.studio-card { margin-block: .75rem; padding: .75rem; border: 1px solid var(--line); border-radius: .5rem; }
+.studio-card summary { cursor: pointer; color: var(--green); }
+.studio-form { display: grid; gap: .75rem; margin-block: 1rem; }
+.studio-form label { display: block; }
+.studio-form input:not([type="checkbox"]), .studio-form select, .studio-form textarea { display: block; width: 100%; }
+.studio-form textarea { min-height: 4.5rem; padding: .55rem; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); }
+.studio-fields { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+.studio dt { font-weight: 700; text-transform: capitalize; }
+.studio dd { margin-inline-start: 0; }
