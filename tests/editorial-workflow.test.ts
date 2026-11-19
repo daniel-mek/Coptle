@@ -9,7 +9,7 @@ const permissions = ["draft", "source", "theology", "gameplay", "publish"];
 beforeAll(async () => {
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
     create schema auth; create table auth.users(id uuid primary key);`);
-  for (const name of ["202611190001_content_foundation", "202611190002_editorial_workflow", "202611190003_studio"]) {
+  for (const name of ["202611190001_content_foundation", "202611190002_editorial_workflow", "202611190003_studio", "202611190004_reviewed_play", "202611190006_bulk_drafts"]) {
     await db.exec(readFileSync(new URL(`../supabase/migrations/${name}.sql`, import.meta.url), "utf8"));
   }
   for (const [index, login] of staff.entries()) {
@@ -19,7 +19,7 @@ beforeAll(async () => {
     await db.query("insert into coptle.editorial_permissions values ($1, $2, $3)", [login, person, permissions[index]]);
   }
   await db.exec("create role unassigned login in role coptle_editorial; create role studio_server login in role coptle_studio");
-  await db.exec("insert into coptle.studio_permissions values ('00000000-0000-0000-0000-000000000003', 'theology')");
+  await db.exec("insert into coptle.studio_permissions values ('00000000-0000-0000-0000-000000000003', 'theology'), ('00000000-0000-0000-0000-000000000001', 'draft')");
 }, 30_000);
 afterAll(async () => { await db.close(); });
 
@@ -72,4 +72,25 @@ test("Studio identity is transaction-scoped and unavailable to ordinary SQL staf
   });
   await expect(attempt("studio_server")).resolves.toEqual(["theology"]);
   await expect(attempt("unassigned")).rejects.toMatchObject({ code: "42501" });
+});
+
+test("permissions and transaction boundaries protect draft imports and retries", async () => {
+  const author = "00000000-0000-0000-0000-000000000001";
+  const reviewer = "00000000-0000-0000-0000-000000000003";
+  const draft = { game: "word", difficulty: "beginner", category: "Batch test", inventory: "daily", citation: "Test citation",
+    payload: { answer: "stone", aliases: [], explanation: "Test-only draft" } };
+  const importBatch = (subject: string, batch: object[]) => as("studio_server", () => db.transaction(async (tx) => {
+    await tx.query("select set_config('coptle.studio_subject', $1, true)", [subject]);
+    return tx.query("select * from coptle.studio_import_drafts($1)", [JSON.stringify(batch)]);
+  }));
+  const versions = () => as("studio_server", () => db.transaction(async (tx) => {
+    await tx.query("select set_config('coptle.studio_subject', $1, true)", [author]);
+    return tx.query("select approved, reviews from coptle.editorial_versions() where category = 'Batch test'");
+  }));
+  await expect(importBatch(reviewer, [draft])).rejects.toMatchObject({ code: "42501" });
+  await expect(importBatch(author, [draft, { ...draft, category: null }])).rejects.toMatchObject({ code: "23502" });
+  expect((await versions()).rows).toEqual([]);
+  expect((await importBatch(author, [draft])).rows).toEqual([{ draft_count: 1, repeated: false }]);
+  expect((await importBatch(author, [draft])).rows).toEqual([{ draft_count: 1, repeated: true }]);
+  expect((await versions()).rows).toEqual([{ approved: false, reviews: {} }]);
 });

@@ -51,6 +51,8 @@ The staff web interface is at `/studio`. If it says staff sign-in is not configu
 
 The Studio revalidates the staff access token with Supabase Auth on each protected request. Sessions use an HttpOnly cookie and require sign-in again after expiry. Removing a person's database permission takes effect on their next request. Drafts and revisions require a fresh review of their own. The public game routes are independent of the Studio. The Launch inventory dashboard shows each game and difficulty against the same rolling 30-day criteria used by public play, including eligible practice counts and dates that are missing, withdrawn, or unsupported by the available puzzle formats.
 
+Staff with Draft permission can use **Import draft batch** in Content Studio. Paste a JSON array of up to 25 drafts and 200 KB, following the template on the page. Errors point to the affected rows and leave the whole batch unsaved. Repeating the same validated batch in the same order reuses its import receipt. Drafts enter the ordinary review workflow.
+
 ### SQL editorial workflow
 
 An administrator provisions individual database logins with membership in `coptle_editorial` and maps each login to the verified staff member’s Supabase user ID in `coptle.editorial_permissions`. Assign only the permissions that person performs. Use individual database credentials so every review is attributed to the connected person.

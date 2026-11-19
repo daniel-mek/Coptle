@@ -1,3 +1,4 @@
+import { BulkImport } from "./bulk-import";
 import { LaunchInventory, type InventoryRow } from "./launch-inventory";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
@@ -156,6 +157,7 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
     </> : <>
       <form action={signOut}><button className="button">Sign out</button></form>
       {permissions.includes("draft") && <details className="studio-card"><summary>New puzzle</summary><Draft /></details>}
+      {permissions.includes("draft") && <BulkImport />}
       <LaunchInventory rows={inventory} />
       <h2>Puzzle versions</h2>
       {versions.length ? versions.map((version) => <VersionCard key={version.version_id} version={version} permissions={permissions} />)

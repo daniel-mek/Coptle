@@ -1,9 +1,11 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authRequest, studioConfigured, studioCookie, studioSubject, withStudio } from "../../lib/studio";
 import { parseStudioAction, StudioInputError } from "../../lib/studio-validation";
+import { parseDraftBatch, type ImportFeedback } from "../../lib/studio-import";
 
 function finish(status: string): never {
   redirect("/studio?status=" + status);
@@ -82,4 +84,26 @@ export async function submitStudio(form: FormData) {
       : code === "23505" ? "duplicate" : code === "23503" || code === "23514" ? "blocked" : "unavailable";
   }
   finish(status);
+}
+
+export async function importStudioDrafts(_previous: ImportFeedback, form: FormData): Promise<ImportFeedback> {
+  try {
+    const subject = await studioSubject((await cookies()).get(studioCookie)?.value);
+    if (!subject) return { errors: ["Sign in with a staff account to import drafts."] };
+    const input = parseDraftBatch(form.get("batch"));
+    if (!input.drafts) return { errors: [...input.errors] };
+    const feedback = await withStudio(subject, async (sql) => {
+      const [result] = await sql<{ draft_count: number; repeated: boolean }[]>`
+        select * from coptle.studio_import_drafts(${sql.json(input.drafts)})
+      `;
+      return { count: result.draft_count, repeated: result.repeated };
+    });
+    if (!feedback.repeated) revalidatePath("/studio");
+    return feedback;
+  } catch (cause) {
+    const code = cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
+    return { errors: [code === "42501" ? "Your staff account lacks draft permission."
+      : code === "23514" || code === "23502" || code === "23503" ? "The database rejected this batch. No drafts were saved."
+      : "The import could not finish. You can retry the same batch."] };
+  }
 }
