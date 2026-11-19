@@ -12,6 +12,7 @@ export type Mark = "correct" | "present" | "absent";
 export type Guess = { input: string; marks: Mark[]; details?: string[] };
 export type Board = {
   id: string;
+  date: string;
   prompt: string;
   attempts: number;
   options?: string[];

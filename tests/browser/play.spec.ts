@@ -24,7 +24,7 @@ test("Saintle accepts aliases and Versele shows its reference on mobile", async 
   await page.setViewportSize({ width: 390, height: 844 });
   const index = Math.floor(Date.parse(puzzleDate()) / 86_400_000) % 2;
   await page.goto("/play/saintle?mode=practice");
-  await page.getByLabel("Your guess").fill(index === 0 ? "anthony" : "mark");
+  await page.getByLabel("Your guess").fill("mary");
   await page.getByRole("button", { name: "Guess" }).click();
   await expect(page.getByRole("heading", { name: "Solved!" })).toBeVisible();
   await page.getByRole("button", { name: "Play again" }).click();
@@ -35,4 +35,21 @@ test("Saintle accepts aliases and Versele shows its reference on mobile", async 
   await page.getByRole("button", { name: "Guess" }).click();
   await expect(page.getByRole("heading", { name: "Solved!" })).toBeVisible();
   await expect(page.getByText(index === 0 ? "Jonah 1:17–2:10" : "Luke 10:25–37", { exact: true })).toBeVisible();
+});
+
+test("theme persists across navigation and sharing omits the answer", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/settings");
+  await page.getByRole("radio", { name: "Dark" }).check();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("link", { name: "Practice" }).click();
+  await page.getByRole("link", { name: "Play The Word" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByLabel("Your guess").fill("psalm");
+  await page.getByRole("button", { name: "Guess", exact: true }).click();
+  await page.getByRole("button", { name: "Copy result" }).click();
+  await expect(page.getByText("Copied a spoiler-free result.")).toBeVisible();
+  const shared = await page.evaluate(() => navigator.clipboard.readText());
+  expect(shared).toContain("1/6");
+  expect(shared).not.toMatch(/psalm/i);
 });

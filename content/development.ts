@@ -50,3 +50,22 @@ export const versePuzzles: Record<Difficulty, Verse[]> = {
     { game: "versele", answer: "Hebrews 11:1", prompt: "Give the precise reference for the definition of faith opening the chapter about faithful witnesses.", explanation: "The chapter goes on to recount examples of faith.", reference: "Hebrews 11:1" },
   ],
 };
+
+// Development-only fixtures. This library has no scheduled daily entries.
+export const practicePuzzles: Record<Difficulty, Record<Puzzle["game"], Puzzle>> = {
+  beginner: {
+    word: { game: "word", answer: "psalm", explanation: "The Book of Psalms collects prayers and songs.", reference: "Psalm 1" },
+    saintle: { game: "saintle", answer: "Mary, the Mother of Jesus", aliases: ["mary", "virgin mary"], region: "Galilee", vocation: "Mother of Jesus", explanation: "Luke recounts Gabriel's visit to Mary in Nazareth.", reference: "Luke 1:26–38" },
+    versele: { game: "versele", answer: "Peter", prompt: "Which disciple stepped out of the boat toward Jesus?", options: ["John", "Andrew", "Peter", "Philip"], explanation: "Jesus reaches out when the disciple begins to sink.", reference: "Matthew 14:22–33" },
+  },
+  intermediate: {
+    word: { game: "word", answer: "gospel", explanation: "The word gospel means good news.", reference: "Mark 1:1" },
+    saintle: { game: "saintle", answer: "Paul the Apostle", aliases: ["paul", "saul of tarsus"], region: "Tarsus", vocation: "Apostle", explanation: "Paul identified Tarsus as his birthplace.", reference: "Acts 22:3" },
+    versele: { game: "versele", answer: "Acts 2", prompt: "Name the book and chapter describing the descent of the Holy Spirit at Pentecost.", explanation: "The gathering hears a sound like a rushing wind.", reference: "Acts 2:1–13" },
+  },
+  advanced: {
+    word: { game: "word", answer: "theosis", explanation: "Theosis refers to participation in the divine life by grace.", reference: "2 Peter 1:4 (verify explanation before publication)" },
+    saintle: { game: "saintle", answer: "Stephen the Protomartyr", aliases: ["stephen", "stephen the first martyr"], region: "Jerusalem", vocation: "One of the Seven", explanation: "Acts names Stephen among the seven appointed to serve the community.", reference: "Acts 6:1–8" },
+    versele: { game: "versele", answer: "2 Timothy 3:16", prompt: "Give the precise reference that describes Scripture as God-breathed and useful for instruction.", explanation: "The surrounding passage discusses the role of Scripture in forming a life of faith.", reference: "2 Timothy 3:14–17" },
+  },
+};

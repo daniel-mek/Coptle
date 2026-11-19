@@ -63,3 +63,20 @@ fieldset label { display: block; padding: .4rem; }
   .ornament { display: none; }
   .cards { grid-template-columns: 1fr; }
 }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.mark-key { color: var(--muted); font-size: .9rem; }
+.tile small { margin-left: .16rem; }
+.guesses { overflow-wrap: anywhere; }
+.keys { max-width: 29rem; }
+.keys button { flex: 0 1 2.65rem; width: auto; min-width: 0; padding-inline: .1rem; }
+.guess-form { margin-block: .4rem; }
+.word-marks { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 2.65rem); justify-content: start; }
+.word-marks .tile { min-width: 0; padding-inline: .14rem; }
+@media (max-width: 620px) {
+  .hero { padding-block: 1.65rem 1.25rem; }
+  .card .game-mark { min-height: 4.5rem; }
+  .word-marks .tile { font-size: .9rem; }
+}
+@media (max-width: 620px) {
+  .word-marks .tile small { display: block; margin-left: 0; }
+}
