@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isDifficulty, isGame } from "../../../lib/catalog";
+import { boardRevision, isDifficulty, isGame } from "../../../lib/catalog";
 import { fixturesEnabled, reviewedPlayEnabled } from "../../../lib/config";
 import { puzzleDate, recentPuzzleDates } from "../../../lib/calendar";
 import { allowMutation, fetchSession, guestLifetime, newSession } from "../../../lib/fixture-sessions";
 import { withFixtureGuest } from "../../../lib/fixture-store";
-import { InvalidGuess, scoreFixtureGuess } from "../../../lib/puzzles";
+import { applyPuzzleMove, InvalidGuess } from "../../../lib/puzzles";
 
 import { playReviewed } from "../../../lib/reviewed-play";
 const headers = { "Cache-Control": "private, no-store" };
@@ -57,11 +57,11 @@ export async function POST(request: NextRequest) {
   if (body instanceof Response) return body;
   const { game, level, mode, action, id, guess, revision, mutation, date } = body;
   if (typeof game !== "string" || !isGame(game) || typeof level !== "string" || !isDifficulty(level)
-    || (mode !== "daily" && mode !== "practice" && mode !== "archive") || (action !== "load" && action !== "guess" && action !== "restart")) {
+    || (mode !== "daily" && mode !== "practice" && mode !== "archive") || (action !== "load" && action !== "guess" && action !== "restart" && action !== "hint" && action !== "forfeit")) {
     return error("Invalid play request.", 400);
   }
   if (action !== "load" && (typeof id !== "string" || id.length !== 36 || typeof revision !== "number"
-    || !Number.isInteger(revision) || revision < 0 || revision > 6
+    || !Number.isInteger(revision) || revision < 0 || revision > 8
     || typeof mutation !== "string" || !/^[a-f\d-]{36}$/.test(mutation))) {
     return error("Invalid session revision.", 400);
   }
@@ -89,10 +89,10 @@ export async function POST(request: NextRequest) {
       const { key, session } = fetchSession(guest, game, level, mode, selectedDate, today);
       let board = session.board;
       if (action !== "load" && session.lastMutation !== mutation) {
-        if (id !== board.id || revision !== board.guesses.length) return error("Progress changed. Reload to continue.", 409);
+        if (id !== board.id || revision !== boardRevision(board)) return error("Progress changed. Reload to continue.", 409);
         if (!allowMutation(guest)) return error("Too many attempts. Try again in a minute.", 429);
         if (board.outcome === "playing" && action === "restart") return error("Finish this practice puzzle first.", 409);
-        if (board.outcome !== "playing" && action === "guess") return error("This puzzle is finished.", 409);
+        if (board.outcome !== "playing" && action !== "restart") return error("This puzzle is finished.", 409);
         if (action === "restart") {
           const replacement = newSession(game, level, mode, session.date);
           replacement.lastMutation = mutation as string;
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           board = replacement.board;
         } else {
           try {
-            board = scoreFixtureGuess(session.snapshot, board, guess as string);
+            board = applyPuzzleMove(session.snapshot, board, action, guess);
             session.board = board;
             session.lastMutation = mutation as string;
           } catch (cause) {

@@ -108,7 +108,8 @@ function VersionCard({ version, permissions }: { version: Version; permissions: 
 
 export default async function Studio({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const { status } = await searchParams;
-  let available = studioConfigured();
+  const configured = studioConfigured();
+  let available = configured;
   let permissions: string[] = [];
   let versions: Version[] = [];
   let signedIn = false;
@@ -135,7 +136,10 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
   return <section className="play studio">
     <h1>Content Studio</h1>
     {typeof status === "string" && Object.hasOwn(notices, status) && <p role="status">{notices[status]}</p>}
-    {!available ? <p>Content Studio is unavailable.</p> : !permissions.length ? <>
+    {!available ? <div>
+      <p>{configured ? "Content Studio could not connect. Try again or contact the site administrator." : "Staff sign-in is not configured on this deployment."}</p>
+      <a href="https://github.com/daniel-mek/Coptle/blob/main/README.md#content-studio">Content Studio setup</a>
+    </div> : !permissions.length ? <>
       {signedIn ? <><p>This account has no editorial permissions.</p><form action={signOut}><button className="button">Sign out</button></form></>
         : <form action={signIn} className="studio-form">
           <label>Staff email <input type="email" name="email" autoComplete="username" required maxLength={320} /></label>

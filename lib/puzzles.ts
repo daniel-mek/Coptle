@@ -1,7 +1,7 @@
 import "server-only";
 import words from "an-array-of-english-words";
 import { practicePuzzles, saintPuzzles, versePuzzles, wordPuzzles, type Puzzle } from "../content/development";
-import type { Board, Difficulty, Game, Guess, Mode } from "./catalog";
+import type { Board, Difficulty, Game, Guess, Mode, PlayMutation } from "./catalog";
 import { normalize, scoreWord } from "./scoring";
 
 const dictionary = new Set(words);
@@ -76,4 +76,25 @@ export function scoreFixtureGuess({ puzzle, saintDirectory, aliases }: FixtureSn
     ...board, guesses, outcome,
     ...(outcome === "playing" ? {} : { answer: puzzle.answer, explanation: puzzle.explanation, reference: puzzle.reference }),
   };
+}
+
+export function applyPuzzleMove(snapshot: FixtureSnapshot, board: Board, action: Exclude<PlayMutation, "restart">, guess: unknown): Board {
+  const { puzzle } = snapshot;
+  if (action === "guess") return scoreFixtureGuess(snapshot, board, guess as string);
+  if (action === "forfeit") return {
+    ...board, outcome: "lost", forfeited: true,
+    answer: puzzle.answer, explanation: puzzle.explanation, reference: puzzle.reference,
+  };
+  if (board.hint) throw new InvalidGuess("You've already used the hint for this puzzle.");
+  if (puzzle.game === "word") {
+    const vowels = puzzle.answer.match(/[aeiou]/gi)?.length ?? 0;
+    return { ...board, hint: `The answer contains ${vowels} vowel ${vowels === 1 ? "letter" : "letters"} (A, E, I, O, U).` };
+  }
+  if (puzzle.game === "saintle") return { ...board, hint: `Region: ${puzzle.region}` };
+  const incorrect = puzzle.options?.length && puzzle.options.length > 2
+    ? puzzle.options.find((option) => normalize(option) !== normalize(puzzle.answer)
+      && !snapshot.aliases?.some((alias) => normalize(alias) === normalize(option))) : undefined;
+  if (incorrect) return { ...board, hint: `You can rule out “${incorrect}.”` };
+  const words = puzzle.answer.trim().split(/\s+/).length;
+  return { ...board, hint: `The expected answer is ${words} ${words === 1 ? "word" : "words"} long.` };
 }

@@ -1,10 +1,10 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import postgres from "postgres";
-import type { Board, Difficulty, Game, Mode } from "./catalog";
+import { boardRevision, type Board, type Difficulty, type Game, type Mode, type PlayMutation } from "./catalog";
 import { guestLifetime } from "./fixture-sessions";
 import { reviewedPlayEnabled } from "./config";
-import { initialBoard, InvalidGuess, scoreFixtureGuess, type FixtureSnapshot } from "./puzzles";
+import { applyPuzzleMove, initialBoard, InvalidGuess, type FixtureSnapshot } from "./puzzles";
 
 let database: ReturnType<typeof postgres> | undefined;
 function connection() {
@@ -68,7 +68,7 @@ function snapshot(game: Game, { payload, citation }: Row): FixtureSnapshot {
 }
 
 type Request = {
-  game: Game; level: Difficulty; mode: Mode; date: string; action: "load" | "guess" | "restart";
+  game: Game; level: Difficulty; mode: Mode; date: string; action: "load" | PlayMutation;
   cookie?: string; id?: unknown; mutation?: unknown; revision?: unknown; guess?: unknown;
 };
 type Reply = { board: Board; token?: string } | { error: string; status: number };
@@ -96,7 +96,7 @@ export async function playReviewed(input: Request): Promise<Reply> {
     `;
     if (!puzzle) return unavailable;
     if (session && (action === "load" || input.mutation === session.last_mutation)) return { board: session.board };
-    if (session && (input.id !== session.board.id || input.revision !== session.board.guesses.length)) return stale;
+    if (session && (input.id !== session.board.id || input.revision !== boardRevision(session.board))) return stale;
     if (session && key) {
       const updated = await sql`update coptle.play_guests set
         window_started = case when window_started <= now() - interval '1 minute' then now() else window_started end,
@@ -107,9 +107,9 @@ export async function playReviewed(input: Request): Promise<Reply> {
     }
     let board: Board;
     let version = puzzle.version_id;
-    if (session && action === "guess") {
+    if (session && action !== "load" && action !== "restart") {
       if (session.board.outcome !== "playing") return { error: "This puzzle is finished.", status: 409 };
-      try { board = scoreFixtureGuess(snapshot(game, puzzle), session.board, input.guess as string); }
+      try { board = applyPuzzleMove(snapshot(game, puzzle), session.board, action, input.guess); }
       catch (cause) {
         if (cause instanceof InvalidGuess) return { error: cause.message, status: 422 };
         throw cause;

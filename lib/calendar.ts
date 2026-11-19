@@ -15,3 +15,15 @@ export function recentPuzzleDates(today = puzzleDate()) {
     new Date(day - (index + 1) * 86_400_000).toISOString().slice(0, 10),
   );
 }
+
+export function nextPuzzleReset(now: Date = new Date()): number {
+  const date = puzzleDate(now);
+  let low = now.getTime();
+  let high = low + 26 * 60 * 60 * 1000;
+  while (high - low > 1) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (puzzleDate(new Date(middle)) === date) low = middle;
+    else high = middle;
+  }
+  return high;
+}

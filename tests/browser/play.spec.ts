@@ -73,3 +73,36 @@ test("archive plays a past day independently of today's puzzle", async ({ page }
   await page.getByRole("link", { name: "Play The Word" }).click();
   await expect(page.getByText("0 of 6 guesses used")).toBeVisible();
 });
+
+test("persists a hint without spending a guess and records a confirmed forfeit", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText(/New puzzles in/)).toBeVisible();
+  await page.getByRole("link", { name: "Play The Word" }).click();
+  await page.getByRole("button", { name: "Show hint" }).click();
+  await expect(page.getByText(/vowel letters/)).toBeVisible();
+  await expect(page.getByText("0 of 6 guesses used")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/vowel letters/)).toBeVisible();
+  await page.getByRole("button", { name: "Give up" }).click();
+  await page.getByRole("button", { name: "Keep playing" }).click();
+  await expect(page.getByLabel("Your guess")).toBeVisible();
+  await page.getByRole("button", { name: "Give up" }).click();
+  await page.getByRole("button", { name: "Reveal answer" }).click();
+  await expect(page.getByRole("heading", { name: "Answer revealed" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Answer revealed" })).toBeVisible();
+  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Play The Word" }).getByText("Completed")).toBeVisible();
+});
+
+test("rejects a stale guess after the hint changes the revision", async ({ request }) => {
+  const target = { game: "word", level: "beginner", mode: "daily" };
+  const send = (data: object) => request.post("/api/play", { data: { ...target, ...data } });
+  const board = await (await send({ action: "load" })).json();
+  const hint = { action: "hint", id: board.id, revision: 0, mutation: crypto.randomUUID() };
+  const result = await send(hint);
+  expect(result.status()).toBe(200);
+  expect(await result.json()).toMatchObject({ outcome: "playing", guesses: [], hint: expect.any(String) });
+  expect((await send(hint)).status()).toBe(200);
+  expect((await send({ action: "guess", guess: "train", id: board.id, revision: 0, mutation: crypto.randomUUID() })).status()).toBe(409);
+});

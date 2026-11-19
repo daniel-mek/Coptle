@@ -42,7 +42,7 @@ In a dedicated Supabase development project, apply the content migrations follow
 
 ### Content Studio
 
-The staff web interface is at `/studio`. Apply the migrations in `supabase/migrations` in order to an isolated Supabase development project.
+The staff web interface is at `/studio`. If it says staff sign-in is not configured, the deployment is missing at least one of the Studio settings below. A connection message means the variables are present but a service request failed. Apply the migrations in `supabase/migrations` in order to an isolated Supabase development project.
 
 1. Create or invite staff in Supabase Auth and configure email/password sign-in. Limit account provisioning to staff and disable public sign-ups for this development project. Staff use a confirmed email and password.
 2. Provision a dedicated PostgreSQL login that inherits only `coptle_studio`. Use a TLS connection, a strong credential, and the transaction pooler where applicable. Never give this login to a person or browser.

@@ -16,3 +16,12 @@ test("archive dates cross daylight savings and month boundaries as calendar days
     "2026-11-01", "2026-10-31", "2026-10-30", "2026-10-29", "2026-10-28", "2026-10-27", "2026-10-26",
   ]);
 });
+
+test.each([
+  ["2026-03-08T05:00:00Z", "2026-03-09T04:00:00Z"],
+  ["2026-11-01T04:00:00Z", "2026-11-02T05:00:00Z"],
+  ["2026-12-31T23:30:00Z", "2027-01-01T05:00:00Z"],
+])("daily reset follows New York midnight at %s", async (now, expected) => {
+  const { nextPuzzleReset } = await import("../lib/calendar");
+  expect(new Date(nextPuzzleReset(new Date(now))).toISOString()).toBe(new Date(expected).toISOString());
+});

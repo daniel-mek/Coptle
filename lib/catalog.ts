@@ -8,6 +8,7 @@ export const difficulties = ["beginner", "intermediate", "advanced"] as const;
 export type Difficulty = (typeof difficulties)[number];
 export type Game = keyof typeof games;
 export type Mode = "daily" | "practice" | "archive";
+export type PlayMutation = "guess" | "restart" | "hint" | "forfeit";
 export type Mark = "correct" | "present" | "absent";
 export type Guess = { input: string; marks: Mark[]; details?: string[] };
 export type Board = {
@@ -19,6 +20,8 @@ export type Board = {
   length?: number;
   guesses: Guess[];
   outcome: "playing" | "won" | "lost";
+  hint?: string;
+  forfeited?: boolean;
   answer?: string;
   explanation?: string;
   reference?: string;
@@ -30,4 +33,9 @@ export function isGame(value: string): value is Game {
 
 export function isDifficulty(value: string): value is Difficulty {
   return difficulties.some((level) => level === value);
+}
+
+// Older saved boards have only guess revisions.
+export function boardRevision(board: Board) {
+  return board.guesses.length + Number(Boolean(board.hint)) + Number(Boolean(board.forfeited));
 }

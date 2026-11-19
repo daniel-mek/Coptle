@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { difficulties, games, isDifficulty, isGame, type Game, type Difficulty } from "../../lib/catalog";
 
-type Result = { game: Game; level: Difficulty; won: boolean };
+import { puzzleDate } from "../../lib/calendar";
+import { summarizeDaily, type DailyRecord } from "../../lib/daily-stats";
+
+type Result = DailyRecord & { game: Game; level: Difficulty };
 
 export default function Statistics() {
   const [results, setResults] = useState<Result[]>();
@@ -18,7 +21,7 @@ export default function Statistics() {
           const [namespace, kind, game, difficulty, date] = key.split(":");
           if (namespace !== "coptle" || kind !== "result" || !game || !isGame(game) || !difficulty || !isDifficulty(difficulty) || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) continue;
           const result = localStorage.getItem(key);
-          if (result === "won" || result === "lost") records.push({ game, level: difficulty, won: result === "won" });
+          if (result === "won" || result === "lost") records.push({ game, level: difficulty, date, won: result === "won" });
         }
       } catch {
         return;
@@ -35,7 +38,11 @@ export default function Statistics() {
     }}>{difficulties.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
     {results && <ul>{Object.entries(games).map(([id, game]) => {
       const played = results.filter((result) => result.game === id && result.level === level);
-      return <li key={id}>{game.name} · {played.length} played · {played.filter((result) => result.won).length} solved</li>;
+      const summary = summarizeDaily(played, puzzleDate());
+      return <li key={id}>
+        <strong>{game.name} · {summary.played} played · {summary.won} solved</strong>
+        {summary.winRate !== null && <p>{summary.winRate}% solved · {summary.current}-day current streak · {summary.best}-day best streak</p>}
+      </li>;
     })}</ul>}
   </section>;
 }

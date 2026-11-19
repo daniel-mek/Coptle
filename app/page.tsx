@@ -3,7 +3,8 @@ import Link from "next/link";
 import { difficulties, games, isDifficulty } from "../lib/catalog";
 import { fixturesEnabled, reviewedPlayEnabled } from "../lib/config";
 import { readyGames } from "../lib/reviewed-play";
-import { dailyTimeZone } from "../lib/calendar";
+import { DailyCountdown, DailyStatus } from "../components/daily-status";
+import { dailyTimeZone, nextPuzzleReset, puzzleDate } from "../lib/calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const query = await searchParams;
   const level = typeof query.level === "string" && isDifficulty(query.level) ? query.level : "beginner";
   const mode = query.mode === "practice" ? "practice" : "daily";
-  const formatted = new Intl.DateTimeFormat("en", { dateStyle: "full", timeZone: dailyTimeZone }).format(new Date());
+  const now = new Date();
+  const today = puzzleDate(now);
+  const reset = nextPuzzleReset(now);
+  const formatted = new Intl.DateTimeFormat("en", { dateStyle: "full", timeZone: dailyTimeZone }).format(now);
   const demo = !reviewedPlayEnabled() && fixturesEnabled();
   const ready = await readyGames(level);
   return <>
@@ -28,6 +32,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       <p className="eyebrow">{mode === "daily" ? formatted : "Practice puzzles"}</p>
       <h1>{mode === "daily" ? "A little wisdom every day." : "Make time to practice."}</h1>
       <p className="lede">Play. Learn. Grow in faith.</p>
+      {mode === "daily" && (demo || ready.length > 0) && <DailyCountdown
+        key={reset} reset={reset} initialMinutes={Math.ceil((reset - now.getTime()) / 60_000)} refreshHref={`/?level=${level}`} />}
     </section>
     <section aria-labelledby="puzzles">
       <div className="section-heading">
@@ -39,7 +45,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       <div className="cards">
         {tiles.map(({ id, name, Icon, playable }) => {
           const available = demo || ready.some((game) => game === id);
-          const status = playable ? available ? mode === "daily" ? "Daily puzzle" : "Practice puzzle" : "Awaiting review" : "Coming later";
+          const status = playable ? available ? mode === "daily"
+            ? <DailyStatus game={id} level={level} date={today} /> : "Practice puzzle" : "Awaiting review" : "Coming later";
           const content = <><Icon aria-hidden="true" /><div><h3>{name}</h3><p>{status}</p></div></>;
           return playable && available
             ? <Link className={`card ${id}`} href={`/play/${id}?mode=${mode}&level=${level}`} aria-label={`Play ${name}`} key={id}>{content}</Link>

@@ -113,3 +113,8 @@ a.card:hover { outline: 2px solid var(--green); outline-offset: -2px; }
 .studio-fields { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
 .studio dt { font-weight: 700; text-transform: capitalize; }
 .studio dd { margin-inline-start: 0; }
+
+.puzzle-actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-block: 1.25rem; }
+.puzzle-actions .secondary { margin-left: 0; }
+.puzzle-actions p { flex-basis: 100%; margin: 0; }
+.daily-countdown { margin: .5rem 0 0; color: var(--muted); font-size: .95rem; }

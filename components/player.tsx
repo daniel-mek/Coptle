@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { games, type Board, type Difficulty, type Game, type Mode } from "../lib/catalog";
+import { boardRevision, games, type Board, type Difficulty, type Game, type Mode, type PlayMutation } from "../lib/catalog";
 
 type Action = { action: "load" } | {
-  action: "guess" | "restart";
+  action: PlayMutation;
   id: string;
   revision: number;
   mutation: string;
@@ -27,10 +27,14 @@ export function Player({ game, level, mode, date, demo }: { game: Game; level: D
   const [input, setInput] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(true);
+  const [confirmForfeit, setConfirmForfeit] = useState(false);
   const requestInFlight = useRef(false);
   const guessField = useRef<HTMLInputElement>(null);
   const choiceField = useRef<HTMLSelectElement>(null);
   const loading = useRef<Promise<Board> | null>(null);
+  const hintText = useRef<HTMLParagraphElement>(null);
+  const revealButton = useRef<HTMLButtonElement>(null);
+  const giveUpButton = useRef<HTMLButtonElement>(null);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
 
@@ -54,24 +58,27 @@ export function Player({ game, level, mode, date, demo }: { game: Game; level: D
     if (mode !== "daily" || !board || board.outcome === "playing") return;
     try {
       localStorage.setItem(`coptle:result:${game}:${level}:${board.date}`, board.outcome);
+      window.dispatchEvent(new Event("coptle-results"));
     } catch {
       // The current puzzle remains usable if browser storage is blocked.
     }
   }, [board, game, level, mode]);
 
-  async function mutate(action: "guess" | "restart", guess?: string) {
+  async function mutate(action: PlayMutation, guess?: string) {
     if (!board || requestInFlight.current) return;
     requestInFlight.current = true;
     setBusy(true);
     setMessage("");
     try {
       const result = await play(game, level, mode, date, {
-        action, id: board.id, revision: board.guesses.length, mutation: crypto.randomUUID(), guess,
+        action, id: board.id, revision: boardRevision(board), mutation: crypto.randomUUID(), guess,
       });
       setBoard(result);
-      setInput("");
+      if (action !== "hint") setInput("");
+      setConfirmForfeit(false);
       requestAnimationFrame(() => {
         if (result.outcome !== "playing") resultHeading.current?.focus();
+        else if (action === "hint") hintText.current?.focus();
         else (guessField.current ?? choiceField.current)?.focus();
       });
     } catch (error) {
@@ -111,6 +118,7 @@ export function Player({ game, level, mode, date, demo }: { game: Game; level: D
     {demo && mode === "practice" && <p className="notice">This development level has one practice puzzle and will repeat.</p>}
     {game === "word" && <p className="mark-key">✓ Correct position · • Elsewhere in the word · × Absent</p>}
     <p role="status">{board.guesses.length} of {board.attempts} guesses used</p>
+    {board.hint && <p className="notice" ref={hintText} tabIndex={-1}><strong>Hint:</strong> {board.hint}</p>}
     <ol className="guesses">
       {board.guesses.map((guess, index) => <li key={index}>
         {game !== "word" && <strong>{guess.input}</strong>}
@@ -145,8 +153,22 @@ export function Player({ game, level, mode, date, demo }: { game: Game; level: D
         </div>)}
         <button type="button" disabled={busy} onClick={() => setInput((current) => current.slice(0, -1))}>Delete</button>
       </div>}
+      <div className="puzzle-actions">
+        {!board.hint && <button type="button" className="button secondary" disabled={busy} onClick={() => void mutate("hint")}>Show hint</button>}
+        {confirmForfeit ? <>
+          <p>Give up and reveal the answer?</p>
+          <button ref={revealButton} type="button" className="button" disabled={busy} onClick={() => void mutate("forfeit")}>Reveal answer</button>
+          <button type="button" className="button secondary" disabled={busy} onClick={() => {
+            setConfirmForfeit(false);
+            requestAnimationFrame(() => giveUpButton.current?.focus());
+          }}>Keep playing</button>
+        </> : <button ref={giveUpButton} type="button" className="button secondary" disabled={busy} onClick={() => {
+          setConfirmForfeit(true);
+          requestAnimationFrame(() => revealButton.current?.focus());
+        }}>Give up</button>}
+      </div>
     </form> : <section className="result">
-      <h2 ref={resultHeading} tabIndex={-1}>{board.outcome === "won" ? "Solved!" : "Puzzle complete"}</h2>
+      <h2 ref={resultHeading} tabIndex={-1}>{board.outcome === "won" ? "Solved!" : board.forfeited ? "Answer revealed" : "Puzzle complete"}</h2>
       <p><strong>{board.answer}</strong></p><p>{board.explanation}</p><p className="reference">{board.reference}</p>
       <button className="button" onClick={() => void share(board)}>Copy result</button>
       {mode === "practice" && <button className="button secondary" disabled={busy} onClick={() => void mutate("restart")}>Play again</button>}
