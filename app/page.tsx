@@ -1,7 +1,8 @@
 import { BookOpen, Grid2X2, Hourglass, Languages, Puzzle, UserRound } from "lucide-react";
 import Link from "next/link";
 import { difficulties, games, isDifficulty } from "../lib/catalog";
-import { fixturesEnabled } from "../lib/config";
+import { fixturesEnabled, reviewedPlayEnabled } from "../lib/config";
+import { readyGames } from "../lib/reviewed-play";
 import { dailyTimeZone } from "../lib/calendar";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
   const level = typeof query.level === "string" && isDifficulty(query.level) ? query.level : "beginner";
   const mode = query.mode === "practice" ? "practice" : "daily";
   const formatted = new Intl.DateTimeFormat("en", { dateStyle: "full", timeZone: dailyTimeZone }).format(new Date());
-  const available = fixturesEnabled();
+  const demo = !reviewedPlayEnabled() && fixturesEnabled();
+  const ready = await readyGames(level);
   return <>
     <section className="hero">
       <p className="eyebrow">{mode === "daily" ? formatted : "Practice puzzles"}</p>
@@ -36,6 +38,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
       </div>
       <div className="cards">
         {tiles.map(({ id, name, Icon, playable }) => {
+          const available = demo || ready.some((game) => game === id);
           const status = playable ? available ? mode === "daily" ? "Daily puzzle" : "Practice puzzle" : "Awaiting review" : "Coming later";
           const content = <><Icon aria-hidden="true" /><div><h3>{name}</h3><p>{status}</p></div></>;
           return playable && available
@@ -43,7 +46,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ l
             : <article className={`card ${id}`} key={id}>{content}</article>;
         })}
       </div>
-      <p className="notice">{available ? "Development puzzles. Content review is pending." : "Puzzles are awaiting content review."}</p>
+      {demo ? <p className="notice">Development puzzles. Content review is pending.</p> : !ready.length && <p className="notice">Puzzles are awaiting content review.</p>}
     </section>
   </>;
 }

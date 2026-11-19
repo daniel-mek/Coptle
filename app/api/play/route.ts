@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isDifficulty, isGame } from "../../../lib/catalog";
-import { fixturesEnabled } from "../../../lib/config";
+import { fixturesEnabled, reviewedPlayEnabled } from "../../../lib/config";
 import { puzzleDate, recentPuzzleDates } from "../../../lib/calendar";
 import { allowMutation, fetchSession, guestLifetime, newSession } from "../../../lib/fixture-sessions";
 import { withFixtureGuest } from "../../../lib/fixture-store";
 import { InvalidGuess, scoreFixtureGuess } from "../../../lib/puzzles";
 
-const cookieName = "coptle_fixture_guest";
+import { playReviewed } from "../../../lib/reviewed-play";
 const headers = { "Cache-Control": "private, no-store" };
 const maxBody = 2048;
 
@@ -40,7 +40,9 @@ async function readBody(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!fixturesEnabled()) return error("Puzzles are awaiting review.", 404);
+  const reviewed = reviewedPlayEnabled();
+  const cookieName = reviewed ? "coptle_reviewed_guest" : "coptle_fixture_guest";
+  if (!reviewed && !fixturesEnabled()) return error("Puzzles are awaiting review.", 404);
   const origin = request.headers.get("origin");
   const protocol = process.env.VERCEL === "1" ? "https:" : request.nextUrl.protocol;
   const host = request.headers.get("host");
@@ -73,6 +75,16 @@ export async function POST(request: NextRequest) {
   }
   const selectedDate = mode === "archive" ? date as string : today;
   try {
+    if (reviewed) {
+      const result = await playReviewed({ game, level, mode, date: selectedDate, action, id, guess, revision, mutation,
+        cookie: request.cookies.get(cookieName)?.value });
+      if ("error" in result) return error(result.error, result.status);
+      const response = NextResponse.json(result.board, { headers });
+      if (result.token) response.cookies.set(cookieName, result.token, {
+        httpOnly: true, sameSite: "lax", path: "/", maxAge: guestLifetime / 1000, secure: protocol === "https:",
+      });
+      return response;
+    }
     const identity = await withFixtureGuest(request.cookies.get(cookieName)?.value, action === "load", (guest) => {
       const { key, session } = fetchSession(guest, game, level, mode, selectedDate, today);
       let board = session.board;
@@ -111,7 +123,7 @@ export async function POST(request: NextRequest) {
     });
     return response;
   } catch (cause) {
-    console.error("Fixture session storage failed", cause);
+    console.error("Puzzle storage failed", cause instanceof Error ? cause.name : "Unknown error");
     return error("Puzzle storage is temporarily unavailable.", 503);
   }
 }

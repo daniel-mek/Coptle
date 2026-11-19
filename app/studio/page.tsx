@@ -45,11 +45,19 @@ function Draft({ version }: { version?: Version }) {
     <label>Answer <input name="answer" required maxLength={120} defaultValue={value("answer")} /></label>
     <label>Accepted aliases, one per line <textarea name="aliases" maxLength={1600} defaultValue={Array.isArray(payload?.aliases) ? payload.aliases.join("\n") : undefined} /></label>
     <label>Explanation <textarea name="explanation" required maxLength={4000} defaultValue={value("explanation")} /></label>
-    {(!version || version.game === "versele") && <label>Versele prompt <textarea name="prompt" required={version?.game === "versele"} maxLength={1000} defaultValue={value("prompt")} /></label>}
+    {(!version || version.game === "versele") && <>
+      <label>Versele prompt <textarea name="prompt" required={version?.game === "versele"} maxLength={1000} defaultValue={value("prompt")} /></label>
+      <label>Versele choices, one per line <textarea name="options" maxLength={730} defaultValue={Array.isArray(payload?.options) ? payload.options.join("\n") : undefined} /></label>
+    </>}
     {(!version || version.game === "saintle") && <div className="studio-fields">
       <label>Saintle region <input name="region" required={version?.game === "saintle"} maxLength={120} defaultValue={value("region")} /></label>
       <label>Saintle vocation <input name="vocation" required={version?.game === "saintle"} maxLength={120} defaultValue={value("vocation")} /></label>
     </div>}
+    {(!version || version.game === "saintle") && <label>Saintle alternatives, one per line as name | region | vocation
+      <textarea name="candidates" maxLength={7400} defaultValue={Array.isArray(payload?.candidates)
+        ? payload.candidates.filter((entry) => entry.answer !== payload.answer)
+          .map((entry) => [entry.answer, entry.region, entry.vocation].join(" | ")).join("\n") : undefined} />
+    </label>}
     <div><button className="button">{version ? "Save new version" : "Create draft"}</button></div>
   </form>;
 }

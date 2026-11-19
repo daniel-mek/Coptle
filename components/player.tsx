@@ -22,7 +22,7 @@ async function play(game: Game, level: Difficulty, mode: Mode, date: string | un
   return result;
 }
 
-export function Player({ game, level, mode, date }: { game: Game; level: Difficulty; mode: Mode; date?: string }) {
+export function Player({ game, level, mode, date, demo }: { game: Game; level: Difficulty; mode: Mode; date?: string; demo: boolean }) {
   const [board, setBoard] = useState<Board>();
   const [input, setInput] = useState("");
   const [message, setMessage] = useState("");
@@ -108,7 +108,7 @@ export function Player({ game, level, mode, date }: { game: Game; level: Difficu
   </>;
   return <>
     <p>{board.prompt}{board.length ? ` Enter ${board.length} letters.` : ""}</p>
-    {mode === "practice" && <p className="notice">This development level has one practice puzzle and will repeat.</p>}
+    {demo && mode === "practice" && <p className="notice">This development level has one practice puzzle and will repeat.</p>}
     {game === "word" && <p className="mark-key">✓ Correct position · • Elsewhere in the word · × Absent</p>}
     <p role="status">{board.guesses.length} of {board.attempts} guesses used</p>
     <ol className="guesses">

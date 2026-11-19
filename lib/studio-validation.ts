@@ -1,3 +1,4 @@
+import { normalize } from "./scoring";
 import { isDifficulty, isGame } from "./catalog";
 
 export const uuidPattern = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
@@ -27,9 +28,33 @@ export function parseStudioAction(form: FormData) {
     const aliases = field(form, "aliases", 1_600, true).split("\n").map((entry) => entry.trim()).filter(Boolean);
     if (aliases.length > 20 || aliases.some((entry) => entry.length > 120)) throw new StudioInputError("Use up to 20 short aliases.");
     const common = { answer, aliases, explanation: field(form, "explanation", 4_000) };
-    if (game === "word" && !/^[a-z]+$/i.test(answer)) throw new StudioInputError("Word answers must contain letters only.");
-    const payload = game === "saintle" ? { ...common, region: field(form, "region", 120), vocation: field(form, "vocation", 120) }
-      : game === "versele" ? { ...common, prompt: field(form, "prompt", 1_000) } : { ...common, answer: answer.toLowerCase() };
+    const length = difficulty === "beginner" ? /^[a-z]{5}$/i
+      : difficulty === "intermediate" ? /^[a-z]{6}$/i : /^[a-z]{7,9}$/i;
+    if (game === "word" && !length.test(answer)) throw new StudioInputError("The Word answer length must match the difficulty.");
+    const options = game === "versele"
+      ? field(form, "options", 730, true).split("\n").map((entry) => entry.trim()).filter(Boolean) : [];
+    if (game === "versele" && (options.length > 6 || (options.length > 0 || difficulty === "beginner")
+      && (options.length < 2 || new Set(options.map(normalize)).size !== options.length
+        || options.some((option) => option.length > 120) || !options.some((option) => normalize(option) === normalize(answer))))) {
+      throw new StudioInputError("Provide two to six distinct Versele choices, including the answer.");
+    }
+    const region = game === "saintle" ? field(form, "region", 120) : "";
+    const vocation = game === "saintle" ? field(form, "vocation", 120) : "";
+    const candidates = game === "saintle" ? field(form, "candidates", 7400).split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
+      const [answer, region, vocation, ...extra] = line.split("|").map((entry) => entry.trim());
+      if (extra.length || !answer || !region || !vocation || [answer, region, vocation].some((entry) => entry.length > 120)) {
+        throw new StudioInputError("Format each Saintle alternative as name | region | vocation.");
+      }
+      return { answer, region, vocation, aliases: [] };
+    }) : [];
+    const names = new Set([answer, ...candidates.map((entry) => entry.answer)].map(normalize));
+    if (game === "saintle" && (candidates.length < 2 || candidates.length > 19 || names.size !== candidates.length + 1
+      || aliases.some((alias) => candidates.some((candidate) => normalize(alias) === normalize(candidate.answer))))) {
+      throw new StudioInputError("Provide two to nineteen distinct Saintle alternatives.");
+    }
+    const payload = game === "saintle" ? { ...common, region, vocation, candidates: [{ answer, region, vocation, aliases }, ...candidates] }
+      : game === "versele" ? { ...common, prompt: field(form, "prompt", 1_000), ...(options.length ? { options } : {}) }
+      : { ...common, answer: answer.toLowerCase() };
     return { action, puzzle: puzzle || null, game, difficulty, inventory, payload,
       category: field(form, "category", 100), citation: field(form, "citation", 500), license: field(form, "license", 300, true) || null } as const;
   }

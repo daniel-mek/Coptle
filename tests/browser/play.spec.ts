@@ -7,7 +7,7 @@ test("guest solves The Word and restores the result after refresh", async ({ pag
   const guess = page.getByLabel("Your guess");
   await guess.fill("xxxxx");
   await page.getByRole("button", { name: "Guess" }).click();
-  await expect(page.getByText("That word is outside the development dictionary.")).toBeVisible();
+  await expect(page.getByText("That word is outside the puzzle dictionary.")).toBeVisible();
   await expect(page.getByText("0 of 6 guesses used")).toBeVisible();
 
   const index = Math.floor(Date.parse(puzzleDate()) / 86_400_000) % 2;

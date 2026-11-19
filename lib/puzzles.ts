@@ -13,7 +13,7 @@ const saints = [
 const knownWords = new Set([...Object.values(wordPuzzles).flat().map(({ answer }) => answer),
   ...Object.values(practicePuzzles).map(({ word }) => word.answer)]);
 
-export type FixtureSnapshot = { puzzle: Puzzle; saintDirectory?: typeof saints };
+export type FixtureSnapshot = { puzzle: Puzzle; saintDirectory?: typeof saints; aliases?: string[] };
 export class InvalidGuess extends Error {}
 
 export function fixtureFor(game: Game, level: Difficulty, mode: Mode, date: string): FixtureSnapshot {
@@ -38,17 +38,17 @@ export function initialBoard({ puzzle, saintDirectory }: FixtureSnapshot, date: 
   };
 }
 
-export function scoreFixtureGuess({ puzzle, saintDirectory }: FixtureSnapshot, board: Board, raw: string): Board {
+export function scoreFixtureGuess({ puzzle, saintDirectory, aliases }: FixtureSnapshot, board: Board, raw: string): Board {
   if (board.outcome !== "playing") throw new InvalidGuess("This puzzle is finished.");
   const input = normalize(raw);
-  let correct = input === normalize(puzzle.answer);
+  let correct = input === normalize(puzzle.answer) || Boolean(aliases?.some((alias) => normalize(alias) === input));
   let guess: Guess;
   if (puzzle.game === "word") {
     if (input.length !== puzzle.answer.length || !/^[a-z]+$/.test(input)) {
       throw new InvalidGuess(`Enter a ${puzzle.answer.length}-letter word.`);
     }
     if (!dictionary.has(input) && !knownWords.has(input) && !correct) {
-      throw new InvalidGuess("That word is outside the development dictionary.");
+      throw new InvalidGuess("That word is outside the puzzle dictionary.");
     }
     guess = { input, marks: scoreWord(puzzle.answer, input) };
   } else if (puzzle.game === "saintle") {

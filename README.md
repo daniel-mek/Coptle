@@ -58,8 +58,18 @@ An administrator provisions individual database logins with membership in `coptl
 - Draft authors use `coptle.editorial_draft` to create an immutable version. The payload includes an answer, explanation, and accepted aliases. Pass the existing puzzle ID to create a revision.
 - Staff use `coptle.editorial_versions()` to look up the version, source, and review history. Qualified reviewers use `coptle.editorial_review` for their assigned source, theology, or gameplay review.
 - Publishers use `coptle.editorial_approve`, then `coptle.editorial_schedule` for daily content. Use `coptle.editorial_withdraw` to remove a version from available inventory.
-- The public runtime connection remains pending. No development puzzle is seeded into editorial inventory.
+- Reviewed delivery uses the separately authorized runtime below. No development puzzle is seeded into editorial inventory.
+
+## Reviewed play
+
+Apply the repository migrations to an isolated Supabase development project first. Provision a TLS PostgreSQL login that inherits only `coptle_play`. Keep its credentials server-side in `COPTLE_PLAY_DATABASE_URL`. This runtime can use delivery functions and manage guest sessions. It has no direct editorial table access. Configure the Studio with its own login and permissions.
+
+Keep `COPTLE_REVIEWED_PLAY=0` until the target environment and genuinely reviewed inventory are ready. When enabled, the app uses the reviewed database exclusively. It does not fall back to development fixtures. Each game and difficulty needs 30 consecutive reviewed daily entries starting today in America/New_York and separate reviewed practice inventory. Keep the rolling schedule stocked. Withdrawal or an inventory gap closes that game and difficulty if the gate is no longer met.
+
+The Studio supports Word answers of the length required by difficulty, Versele choices for beginner puzzles and optional choices at higher difficulties, and Saintle alternatives with region and vocation. Previously drafted entries that lack those fields need a new version and fresh review before they count toward release.
+
+Daily, practice, and archive progress use distinct slots. The database records the exact approved version for each guest session. Existing sessions keep their version when a schedule entry is replaced and lose access if their version is withdrawn. The production archive currently covers the previous seven days. Operators can remove expired guests with `delete from coptle.play_guests where expires_at <= now()` as the database owner, which cascades to their sessions.
 
 ## Launch requirements
 
-The development library contains a small, repeating fixture set. The server validates each submitted guess against the session's attempt history. Practice fixtures are separate from the rotating daily library. Vercel Production disables fixtures even if the preview flag is present. Production guest sessions linked to editorial version IDs, the live schedule, a genuinely reviewed content library, production practice, registered accounts, and Content Studio reporting and audit tooling are pending. See [TASKS.md](TASKS.md) for the remaining work.
+The development library contains a small, repeating fixture set. The server validates each submitted guess against the session's attempt history. Practice fixtures are separate from the rotating daily library. Vercel Production disables fixtures even if the preview flag is present. Hosted Supabase verification, genuinely reviewed launch inventory, registered accounts, and Content Studio reporting and audit tooling are pending. See [TASKS.md](TASKS.md) for the remaining work.
