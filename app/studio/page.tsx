@@ -1,3 +1,4 @@
+import { LaunchInventory, type InventoryRow } from "./launch-inventory";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { difficulties, games, isGame } from "../../lib/catalog";
@@ -112,16 +113,22 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
   let available = configured;
   let permissions: string[] = [];
   let versions: Version[] = [];
+  let inventory: InventoryRow[] = [];
   let signedIn = false;
   if (available) {
     try {
       const subject = await studioSubject((await cookies()).get(studioCookie)?.value);
       signedIn = Boolean(subject);
       if (subject) {
-        ({ permissions, versions } = await withStudio(subject, async (sql) => {
+        ({ permissions, versions, inventory } = await withStudio(subject, async (sql) => {
           const [record] = await sql<{ permissions: string[] }[]>`select coptle.editorial_capabilities() as permissions`;
           return {
             permissions: record.permissions,
+            inventory: record.permissions.length ? await sql<InventoryRow[]>`
+              select i.game, i.difficulty, i.daily_ready, i.practice_ready, i.gaps,
+                i.window_start::text as window_start, i.window_end::text as window_end
+              from coptle.studio_launch_inventory() as i
+            ` : [],
             versions: record.permissions.length ? await sql<Version[]>`
               select v.*, s.puzzle_date::text as scheduled from coptle.editorial_versions() as v
               left join coptle.studio_schedule() as s using (version_id)
@@ -149,6 +156,7 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
     </> : <>
       <form action={signOut}><button className="button">Sign out</button></form>
       {permissions.includes("draft") && <details className="studio-card"><summary>New puzzle</summary><Draft /></details>}
+      <LaunchInventory rows={inventory} />
       <h2>Puzzle versions</h2>
       {versions.length ? versions.map((version) => <VersionCard key={version.version_id} version={version} permissions={permissions} />)
         : <p>No puzzle versions yet.</p>}

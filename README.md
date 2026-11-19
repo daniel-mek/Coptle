@@ -49,7 +49,7 @@ The staff web interface is at `/studio`. If it says staff sign-in is not configu
 3. In the SQL editor, grant individual capabilities by inserting each verified staff UUID and permission into `coptle.studio_permissions`. Available values are `draft`, `source`, `theology`, `gameplay`, and `publish`. Only qualified staff should receive theological review permission.
 4. Set `COPTLE_SUPABASE_URL`, `COPTLE_SUPABASE_PUBLISHABLE_KEY`, and `COPTLE_STUDIO_DATABASE_URL` in the isolated environment. The database URL is a server-only secret. Use access protection for hosted previews.
 
-The Studio revalidates the staff access token with Supabase Auth on each protected request. Sessions use an HttpOnly cookie and require sign-in again after expiry. Removing a person's database permission takes effect on their next request. Drafts and revisions require a fresh review of their own. The public game routes are independent of the Studio.
+The Studio revalidates the staff access token with Supabase Auth on each protected request. Sessions use an HttpOnly cookie and require sign-in again after expiry. Removing a person's database permission takes effect on their next request. Drafts and revisions require a fresh review of their own. The public game routes are independent of the Studio. The Launch inventory dashboard shows each game and difficulty against the same rolling 30-day criteria used by public play, including eligible practice counts and dates that are missing, withdrawn, or unsupported by the available puzzle formats.
 
 ### SQL editorial workflow
 
