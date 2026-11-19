@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. Development fixtures are available automatically in the Next.js development server. Daily puzzle dates use midnight in America/New_York. Development guest progress is kept on the current server process for up to two days and restored on refresh through an HttpOnly cookie. Restarting the server clears active games. Daily result totals and appearance settings remain in this browser.
+Open http://localhost:3000. Development fixtures are available automatically in the Next.js development server. Daily puzzle dates use midnight in America/New_York. Development guest progress is retained for 30 days through an HttpOnly cookie. Local SQLite storage lives at `.coptle/fixtures.sqlite` and survives a server restart. Daily result totals and appearance settings are stored in this browser. The development archive offers the previous seven days with separate progress.
 
 ## Verification
 
@@ -34,8 +34,21 @@ Once you own a domain, add it in the Vercel project's Domains settings and enter
 
 ## PostgreSQL content foundation
 
-For an isolated Supabase project, review and apply the SQL in `supabase/migrations` using the Supabase CLI or SQL editor. The migration creates a private `coptle` schema and grants no browser or service API access. Do not add it to the API's exposed schemas. `npm test` runs the migration against a disposable PGlite database with test-only review records. The running site does not connect to this schema yet.
+For an isolated Supabase project, review and apply the SQL in `supabase/migrations` using the Supabase CLI or SQL editor. The migration creates a private `coptle` schema and grants no browser or service API access. Do not add it to the API's exposed schemas. `npm test` runs the migration against a disposable PGlite database with test-only review records. The public application still serves gated development fixtures.
+
+### Shared development sessions
+
+In a dedicated Supabase development project, apply the content migrations followed by `supabase/development/fixture_guests.sql`. Provision an individual database login with membership in `coptle_fixture_app` and use its TLS connection string as the server-only `COPTLE_FIXTURE_DATABASE_URL`. For a hosted preview, use a transaction-pooler connection and Vercel Deployment Protection. Do not use the database owner, public API key, or service-role key as application credentials. Have the database owner prune expired rows by running `delete from coptle.fixture_guests where expires_ms <= extract(epoch from now()) * 1000` on a schedule. Keep this fixture storage separate from production.
+
+### Editorial workflow
+
+An administrator provisions individual database logins with membership in `coptle_editorial` and maps each login to the verified staff member’s Supabase user ID in `coptle.editorial_permissions`. Assign only the permissions that person performs. Use individual database credentials so every review is attributed to the connected person.
+
+- Draft authors use `coptle.editorial_draft` to create an immutable version. The payload includes an answer, explanation, and accepted aliases. Pass the existing puzzle ID to create a revision.
+- Staff use `coptle.editorial_versions()` to look up the version, source, and review history. Qualified reviewers use `coptle.editorial_review` for their assigned source, theology, or gameplay review.
+- Publishers use `coptle.editorial_approve`, then `coptle.editorial_schedule` for daily content. Use `coptle.editorial_withdraw` to remove a version from available inventory.
+- The Content Studio web interface and public runtime connection remain pending. No development puzzle is seeded into editorial inventory.
 
 ## Launch requirements
 
-The development library contains a small, repeating fixture set. The server validates each submitted guess against the session's attempt history. Practice fixtures are separate from the rotating daily library. Vercel Production disables fixtures even if the preview flag is present. Durable sessions, an approved content library, a database-backed daily schedule, production practice content, accounts, and the protected review and publishing workflow are pending. See [TASKS.md](TASKS.md) for the remaining work.
+The development library contains a small, repeating fixture set. The server validates each submitted guess against the session's attempt history. Practice fixtures are separate from the rotating daily library. Vercel Production disables fixtures even if the preview flag is present. Production guest sessions linked to editorial version IDs, the live schedule, a genuinely reviewed content library, production practice, registered accounts, and the Content Studio web interface are pending. See [TASKS.md](TASKS.md) for the remaining work.

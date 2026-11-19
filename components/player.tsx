@@ -11,18 +11,18 @@ type Action = { action: "load" } | {
   guess?: string;
 };
 
-async function play(game: Game, level: Difficulty, mode: Mode, action: Action): Promise<Board> {
+async function play(game: Game, level: Difficulty, mode: Mode, date: string | undefined, action: Action): Promise<Board> {
   const response = await fetch("/api/play", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ game, level, mode, ...action }),
+    body: JSON.stringify({ game, level, mode, date, ...action }),
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error);
   return result;
 }
 
-export function Player({ game, level, mode }: { game: Game; level: Difficulty; mode: Mode }) {
+export function Player({ game, level, mode, date }: { game: Game; level: Difficulty; mode: Mode; date?: string }) {
   const [board, setBoard] = useState<Board>();
   const [input, setInput] = useState("");
   const [message, setMessage] = useState("");
@@ -36,7 +36,7 @@ export function Player({ game, level, mode }: { game: Game; level: Difficulty; m
 
   useEffect(() => {
     let active = true;
-    loading.current ??= play(game, level, mode, { action: "load" });
+    loading.current ??= play(game, level, mode, date, { action: "load" });
     void loading.current.then((loaded) => {
       if (active) setBoard(loaded);
     }).catch(() => {
@@ -48,7 +48,7 @@ export function Player({ game, level, mode }: { game: Game; level: Difficulty; m
       }
     });
     return () => { active = false; };
-  }, [game, level, mode, loadAttempt]);
+  }, [game, level, mode, date, loadAttempt]);
 
   useEffect(() => {
     if (mode !== "daily" || !board || board.outcome === "playing") return;
@@ -65,7 +65,7 @@ export function Player({ game, level, mode }: { game: Game; level: Difficulty; m
     setBusy(true);
     setMessage("");
     try {
-      const result = await play(game, level, mode, {
+      const result = await play(game, level, mode, date, {
         action, id: board.id, revision: board.guesses.length, mutation: crypto.randomUUID(), guess,
       });
       setBoard(result);

@@ -1,27 +1,15 @@
 import "server-only";
 import type { Board, Difficulty, Game, Mode } from "./catalog";
-import { buildBoard } from "./puzzles";
+import { fixtureFor, initialBoard, type FixtureSnapshot } from "./puzzles";
+import { recentPuzzleDates } from "./calendar";
 
-type Session = { board: Board; date: string; lastMutation?: string };
-type Guest = { sessions: Map<string, Session>; expires: number; mutations: number; window: number };
+type Session = { board: Board; date: string; snapshot: FixtureSnapshot; lastMutation?: string };
+export type Guest = { sessions: Record<string, Session>; expires: number; mutations: number; window: number };
 
-const lifetime = 2 * 24 * 60 * 60 * 1000;
-const guests = new Map<string, Guest>();
-const maxGuests = 2_000;
+export const guestLifetime = 30 * 24 * 60 * 60 * 1000;
 
-export function fetchGuest(cookie: string | undefined, create: boolean) {
-  const now = Date.now();
-  const known = cookie && guests.get(cookie);
-  if (known && known.expires > now) return { guest: known };
-  if (!create) return null;
-  if (guests.size >= maxGuests) {
-    for (const [key, guest] of guests) if (guest.expires <= now) guests.delete(key);
-    if (guests.size >= maxGuests) return null;
-  }
-  const token = crypto.randomUUID();
-  const guest: Guest = { sessions: new Map(), expires: now + lifetime, mutations: 0, window: now };
-  guests.set(token, guest);
-  return { guest, token };
+export function newGuest(now: number): Guest {
+  return { sessions: {}, expires: now + guestLifetime, mutations: 0, window: now };
 }
 
 export function allowMutation(guest: Guest) {
@@ -35,16 +23,23 @@ export function allowMutation(guest: Guest) {
   return true;
 }
 
-export function fetchSession(guest: Guest, game: Game, level: Difficulty, mode: Mode, date: string) {
-  const key = `${game}:${level}:${mode}`;
-  let session = guest.sessions.get(key);
-  if (!session || (mode === "daily" && session.date !== date)) {
+export function fetchSession(guest: Guest, game: Game, level: Difficulty, mode: Mode, date: string, today: string) {
+  if (mode === "archive") {
+    const recent = new Set(recentPuzzleDates(today));
+    for (const key of Object.keys(guest.sessions)) {
+      if (key.startsWith("archive:") && !recent.has(key.slice(-10))) delete guest.sessions[key];
+    }
+  }
+  const key = mode === "archive" ? `${mode}:${game}:${level}:${date}` : `${mode}:${game}:${level}`;
+  let session = guest.sessions[key];
+  if (!session?.snapshot || (mode === "daily" && session.date !== date)) {
     session = newSession(game, level, mode, date);
-    guest.sessions.set(key, session);
+    guest.sessions[key] = session;
   }
   return { key, session };
 }
 
 export function newSession(game: Game, level: Difficulty, mode: Mode, date: string): Session {
-  return { board: buildBoard(game, level, mode, crypto.randomUUID(), date, []), date };
+  const snapshot = fixtureFor(game, level, mode, date);
+  return { board: initialBoard(snapshot, date), date, snapshot };
 }

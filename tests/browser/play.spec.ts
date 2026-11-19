@@ -42,6 +42,7 @@ test("theme persists across navigation and sharing omits the answer", async ({ p
   await page.goto("/settings");
   await page.getByRole("radio", { name: "Dark" }).check();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByLabel("Menu", { exact: true }).click();
   await page.getByRole("link", { name: "Practice" }).click();
   await page.getByRole("link", { name: "Play The Word" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -52,4 +53,23 @@ test("theme persists across navigation and sharing omits the answer", async ({ p
   const shared = await page.evaluate(() => navigator.clipboard.readText());
   expect(shared).toContain("1/6");
   expect(shared).not.toMatch(/psalm/i);
+});
+
+test("archive plays a past day independently of today's puzzle", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Archive" }).click();
+  await expect(page.getByRole("heading", { name: "Archive" })).toBeVisible();
+  const archived = page.locator(".archive-list").getByRole("link", { name: "The Word" }).first();
+  const href = await archived.getAttribute("href");
+  const date = new URL(href!, "http://localhost").searchParams.get("date")!;
+  const index = Math.floor(Date.parse(date) / 86_400_000) % 2;
+  await archived.click();
+  await page.getByLabel("Your guess").fill(index === 0 ? "faith" : "grace");
+  await page.getByRole("button", { name: "Guess", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Solved!" })).toBeVisible();
+  await page.getByRole("link", { name: "Statistics" }).click();
+  await expect(page.getByText("The Word · 0 played · 0 solved")).toBeVisible();
+  await page.getByRole("link", { name: "Home" }).click();
+  await page.getByRole("link", { name: "Play The Word" }).click();
+  await expect(page.getByText("0 of 6 guesses used")).toBeVisible();
 });

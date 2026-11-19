@@ -2,24 +2,27 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { games, isDifficulty, isGame } from "../../../lib/catalog";
 import { fixturesEnabled } from "../../../lib/config";
+import { recentPuzzleDates } from "../../../lib/calendar";
 import { Player } from "../../../components/player";
 
 export const dynamic = "force-dynamic";
 
 export default async function Play({ params, searchParams }: {
   params: Promise<{ game: string }>;
-  searchParams: Promise<{ level?: string; mode?: string }>;
+  searchParams: Promise<{ level?: string; mode?: string; date?: string }>;
 }) {
   const { game } = await params;
   if (!isGame(game) || !fixturesEnabled()) notFound();
   const query = await searchParams;
   const level = typeof query.level === "string" && isDifficulty(query.level) ? query.level : "beginner";
-  const mode = query.mode === "practice" ? "practice" : "daily";
+  const mode = query.mode === "practice" || query.mode === "archive" ? query.mode : "daily";
+  const date = mode === "archive" ? query.date : undefined;
+  if (mode === "archive" && (!date || !recentPuzzleDates().includes(date))) notFound();
 
   return <section className="play">
-    <Link href={`/?mode=${mode}&level=${level}`}>← All puzzles</Link>
+    <Link href={mode === "archive" ? `/archive?level=${level}` : `/?mode=${mode}&level=${level}`}>← {mode === "archive" ? "Archive" : "All puzzles"}</Link>
     <p className="eyebrow play-label">{mode} / {level}</p>
     <h1>{games[game].name}</h1>
-    <Player key={`${game}:${level}:${mode}`} game={game} level={level} mode={mode} />
+    <Player key={`${game}:${level}:${mode}:${date}`} game={game} level={level} mode={mode} date={date} />
   </section>;
 }

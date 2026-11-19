@@ -11,31 +11,14 @@ a { color: var(--green); text-underline-offset: .2em; }
 :focus-visible { outline: 3px solid #986a27; outline-offset: 3px; }
 .skip { position: absolute; top: 0; left: 1rem; transform: translateY(-120%); }
 .skip:focus { transform: none; background: var(--panel); padding: .5rem; }
-.shell, .site-header, .site-footer { width: min(1120px, 92%); margin-inline: auto; }
-.site-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding-block: 1.4rem; border-bottom: 1px solid var(--line); }
-.site-header nav, .levels { display: flex; gap: 1rem; flex-wrap: wrap; }
 .site-header a, .levels a { text-decoration: none; }
 .site-header a:hover, .levels a:hover { text-decoration: underline; }
-.brand { font-weight: 700; font-size: 2rem; }
-.brand span { color: #906b2e; }
-.hero { display: grid; grid-template-columns: 3fr 2fr; align-items: center; gap: 2rem; padding: 3.7rem 0 3rem; }
 .eyebrow { color: var(--muted); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
-.lede { font-size: 1.1rem; max-width: 34ch; }
-.ornament { margin: auto; width: min(100%, 17rem); aspect-ratio: 1; transform: rotate(45deg) scale(.8); border: 1px solid var(--gold); outline: 1px solid var(--gold); outline-offset: .55rem; display: grid; place-items: center; color: #906b2e; }
-.ornament span { transform: rotate(-45deg); font-size: 8rem; }
-.section-heading { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--line); padding: 1.5rem 0; }
-.levels { gap: .65rem; }
 .levels a { text-transform: capitalize; padding: .3rem .65rem; border: 1px solid transparent; }
 .levels a[aria-current] { border-color: var(--line); font-weight: 700; }
-.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-.card { background: var(--panel); border: 1px solid var(--line); padding: 1.3rem; }
-.game-mark { display: grid; place-items: center; width: 100%; min-height: 7rem; background: #dbe7d8; color: #243d32; font: 3.8rem Georgia, serif; }
-.saintle .game-mark { background: #eadad3; color: #732f3a; }
-.versele .game-mark { background: #eae1ca; color: #654e24; }
 .button { display: inline-flex; gap: .75em; align-items: center; justify-content: center; background: #243d32; border: 1px solid #52755e; color: white; padding: .55rem .9rem; cursor: pointer; text-decoration: none; font: inherit; }
 .button:disabled { opacity: .65; cursor: default; }
 .secondary { margin-left: .6rem; background: var(--panel); color: var(--ink); }
-.site-footer { border-top: 1px solid var(--line); margin-top: 3rem; padding-block: 1.25rem; color: var(--muted); font-size: .85rem; }
 .play { max-width: 44rem; margin: 2.5rem auto; }
 .play h1 { font-size: clamp(2.8rem, 7vw, 4.8rem); }
 .play-label { margin-top: 2rem; }
@@ -56,13 +39,6 @@ input, select { border: 1px solid var(--line); background: var(--panel); color: 
 .result { border-top: 1px solid var(--line); padding: 1rem 0; }
 fieldset { border: 1px solid var(--line); }
 fieldset label { display: block; padding: .4rem; }
-@media (max-width: 620px) {
-  .site-header { align-items: start; flex-direction: column; }
-  .site-header nav { gap: .5rem .85rem; }
-  .hero { grid-template-columns: 1fr; padding-top: 2.5rem; }
-  .ornament { display: none; }
-  .cards { grid-template-columns: 1fr; }
-}
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .mark-key { color: var(--muted); font-size: .9rem; }
 .tile small { margin-left: .16rem; }
@@ -73,10 +49,55 @@ fieldset label { display: block; padding: .4rem; }
 .word-marks { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 2.65rem); justify-content: start; }
 .word-marks .tile { min-width: 0; padding-inline: .14rem; }
 @media (max-width: 620px) {
-  .hero { padding-block: 1.65rem 1.25rem; }
-  .card .game-mark { min-height: 4.5rem; }
   .word-marks .tile { font-size: .9rem; }
 }
 @media (max-width: 620px) {
   .word-marks .tile small { display: block; margin-left: 0; }
 }
+
+/* Coptle's shared shell and game selection */
+.site-frame { width: min(100%, 1500px); margin-inline: auto; padding-inline: clamp(.85rem, 2.25vw, 2rem); }
+.site-frame .shell, .site-header { width: 100%; }
+.site-frame .shell { min-height: 58vh; }
+.site-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: clamp(.65rem, 2.75vw, 2.55rem) 0; border-bottom: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
+.brand { display: inline-flex; gap: .55rem; align-items: center; font: 800 clamp(1.65rem, 4vw, 3.4rem)/1 system-ui, sans-serif; letter-spacing: -.03em; text-transform: uppercase; }
+.brand svg { width: .84em; height: .84em; }
+.icon-button { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: .45rem; color: var(--green); cursor: pointer; }
+.icon-button:hover { background: var(--panel); }
+.settings-link { justify-self: end; }
+.site-menu { position: relative; justify-self: start; }
+.site-menu summary::-webkit-details-marker { display: none; }
+.site-menu nav { position: absolute; z-index: 2; top: calc(100% + .3rem); left: 0; display: grid; gap: 0; width: max-content; padding: .4rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--panel); }
+.site-menu nav a { padding: .55rem .85rem; }
+.hero { display: block; text-align: center; padding: clamp(1.8rem, 4vw, 3.5rem) 0 clamp(1.2rem, 3vw, 2.6rem); }
+.hero .eyebrow { margin: 0 0 .8rem; font-size: clamp(.72rem, 1.6vw, 1.08rem); letter-spacing: .07em; }
+.hero h1, .section-heading h2, .play h1, .result h2 { font-family: system-ui, sans-serif; }
+.hero h1 { margin: 0; font-size: clamp(2rem, 5.2vw, 4.6rem); letter-spacing: -.055em; font-weight: 800; }
+.hero .lede { max-width: none; margin: .65rem 0 0; font-size: clamp(1rem, 2vw, 1.55rem); color: var(--muted); }
+.section-heading { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: .4rem; padding-bottom: .7rem; }
+.section-heading h2 { font-size: clamp(.95rem, 1.6vw, 1.25rem); font-weight: 700; }
+.levels { display: flex; flex-wrap: wrap; gap: .15rem; }
+.levels a { border-radius: .4rem; font-size: clamp(.74rem, 1.5vw, .96rem); }
+.levels a[aria-current] { background: var(--panel); }
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(.5rem, 1.1vw, 1rem); }
+.card { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; min-height: clamp(8rem, 15.4vw, 14rem); gap: 1rem; border: 0; border-radius: clamp(.65rem, 1.1vw, 1.1rem); padding: clamp(.85rem, 1.7vw, 1.55rem); color: var(--green); text-decoration: none; background: var(--card); }
+a.card:hover { outline: 2px solid var(--green); outline-offset: -2px; }
+.card svg { width: clamp(1.55rem, 3.4vw, 3.25rem); height: auto; }
+.card h3 { font: 700 clamp(1rem, 2.15vw, 1.8rem)/1.15 system-ui, sans-serif; margin: 0; }
+.card p { margin: .55rem 0 0; font-size: clamp(.78rem, 1.65vw, 1.25rem); color: var(--muted); }
+.word { --card-light: #d9e4d7; --card-dark: #293b31; }
+.saintle { --card-light: #ebe0bf; --card-dark: #403922; }
+.versele { --card-light: #ebd7d7; --card-dark: #463237; }
+.connections { --card-light: #dce2eb; --card-dark: #313b4a; }
+.chronicle { --card-light: #e7decb; --card-dark: #423a2d; }
+.copticle { --card-light: #e1ddec; --card-dark: #3c354a; }
+.card { --card: var(--card-light); }
+:root[data-theme="dark"] .card { --card: var(--card-dark); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card { --card: var(--card-dark); } }
+.bottom-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 1.4rem; padding: .65rem 0 1rem; border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); text-align: center; }
+.bottom-nav a { display: grid; justify-items: center; align-content: center; min-height: 3.35rem; gap: .25rem; color: var(--muted); font-size: clamp(.72rem, 1.5vw, 1.12rem); text-decoration: none; border-radius: .45rem; }
+.bottom-nav a[aria-current], .bottom-nav a:hover { color: var(--green); background: var(--panel); }
+.bottom-nav svg { width: 1.35rem; height: 1.35rem; }
+.archive-list { list-style: none; padding: 0; }
+.archive-list li { border-bottom: 1px solid var(--line); padding: .8rem 0; }
+.archive-list nav { display: flex; flex-wrap: wrap; gap: .45rem 1.15rem; }
